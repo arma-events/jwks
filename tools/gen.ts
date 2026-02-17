@@ -6,17 +6,19 @@
 
 import { parseArgs } from "@std/cli";
 import { join } from "@std/path";
+import { simpleGit } from "simple-git";
 import { logIfTerminal, nowAsNumericDate, warnIfTerminal } from "./utils/mod.ts";
 
 const flags = parseArgs(Deno.args, {
-  boolean: ["help", "production", "staging", "force"],
+  boolean: ["help", "production", "staging", "force", "git"],
   alias: {
     h: "help",
     p: "production",
     s: "staging",
     f: "force",
   },
-  default: { production: false, staging: true, force: false },
+  default: { production: false, staging: true, force: false, git: true },
+  negatable: ["git"],
   stopEarly: true,
 });
 
@@ -30,6 +32,7 @@ if (flags.help || !name) {
       -p, --production     Save key for production environment (Default: false)
       -s, --staging        Save key for staging environment (Default: true, if --production is not set)
       -f, --force          Force overwrite existing key
+      --no-git             Don't commit the generated key to git (Default: false)
     `);
   Deno.exit(1);
 }
@@ -98,3 +101,17 @@ const prefix = comment ? `// ${comment}\n` : "";
 const jwkPublicStr = prefix + JSON.stringify({ ...jwkPublic, kid, iat }, undefined, 2) + "\n";
 
 await Deno.writeTextFile(path, jwkPublicStr);
+
+if (!flags.git) Deno.exit(0);
+
+const git = simpleGit(join(import.meta.dirname!, ".."));
+try {
+  await git.add(path);
+  console.log("%cCommitting public key to git...", "color: green; font-weight: bold;");
+  await git.commit(`add ${dir}/${name} JWK public key`);
+  console.log("%cPushing public key to git...", "color: green; font-weight: bold;");
+  await git.push();
+} catch (err) {
+  console.error("%cFailed to commit to git:\n", "color: red; font-weight: bold;", err);
+  Deno.exit(1);
+}
