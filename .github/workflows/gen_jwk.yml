@@ -13,6 +13,9 @@ jobs:
         with:
           deno-version: lts
 
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
       - name: Build static files
         id: build
         run: deno run build
