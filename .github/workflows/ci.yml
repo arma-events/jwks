@@ -1,6 +1,10 @@
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "tools/gen.ts"
+      - "README.md"
+      - ".gitignore"
   workflow_dispatch:
 
 permissions:
